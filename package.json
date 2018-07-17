@@ -1,0 +1,65 @@
+{
+  "scripts": {
+    "start": "nodemon -r dotenv/config ./bin/www",
+    "test": "ava"
+  },
+  "name": "app",
+  "description": "journal REST app",
+  "version": "0.0.0",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lmmarsano/app.git"
+  },
+  "keywords": [
+    "REST",
+    "CRUD",
+    "node"
+  ],
+  "author": "Luis Marsano <luis.marsano@gmail.com>",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/lmmarsano/app/issues"
+  },
+  "homepage": "https://github.com/lmmarsano/app#readme",
+  "browserslist": "defaults",
+  "devDependencies": {
+    "@types/koa": "^2.0.46",
+    "@types/mongoose": "^5.2.0",
+    "@types/node": "^10.5.2",
+    "@types/supertest": "^2.0.5",
+    "ava": "^0.25.0",
+    "mongodb-memory-server": "^1.9.0",
+    "supertest": "^3.1.0",
+    "supports-color": "^5.4.0",
+    "webpack-cli": "^3.0.8"
+  },
+  "dependencies": {
+    "@koa/cors": "^2.2.2",
+    "argon2": "^0.19.3",
+    "cssnano": "^4.0.2",
+    "debug": "^3.1.0",
+    "dotenv": "^6.0.0",
+    "keygrip": "^1.0.2",
+    "koa": "^2.5.2",
+    "koa-body": "^4.0.4",
+    "koa-compose": "^4.1.0",
+    "koa-conditional-get": "^2.0.0",
+    "koa-connect": "^2.0.1",
+    "koa-error": "^3.2.0",
+    "koa-etag": "^3.0.0",
+    "koa-logger": "^3.2.0",
+    "koa-router": "^7.4.0",
+    "koa-session": "^5.8.2",
+    "koa-session-mongoose": "^2.0.5",
+    "koa-static": "^5.0.0",
+    "koa-views": "^6.1.4",
+    "mongoose": "^5.2.3",
+    "postcss-discard-comments": "^4.0.0",
+    "postcss-middleware": "^1.1.4",
+    "precss": "^3.1.2",
+    "pug": "^2.0.3",
+    "rucksack-css": "^1.0.2",
+    "sugarss": "^1.0.1"
+  }
+}

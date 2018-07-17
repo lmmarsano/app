@@ -1,0 +1,9 @@
+{ "compilerOptions":
+  { "allowJs": true
+  , "checkJs": true
+  , "pretty": true
+  , "noEmit": true
+  , "moduleResolution": "Node"
+  , "target": "ES2017"
+  }
+}

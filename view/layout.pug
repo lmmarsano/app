@@ -1,0 +1,53 @@
+doctype html
+mixin navItem(title, label)
+	- label ? null : (label = title)
+	li.nav-item
+		a( href=(title ? `${title}.html` : '.')
+		   aria-current=(locals.title === title && 'page')
+		 )= label
+html(xmlns='http://www.w3.org/1999/xhtml' lang='en')
+	- let locals = htmlWebpackPlugin.options.locals
+	head
+		meta(charset='utf-8')
+		meta(http-equiv='X-UA-Compatible' content='IE=edge')
+		meta(name='author' content='Luis Marsano')
+		meta(name='viewport' content='width=device-width, initial-scale=1')
+		block meta
+		link(rel='icon' sizes='128x128' href='image/favicon.ico')
+		link(rel='icon' sizes='any' media='image/svg+xml' href='image/favicon.svg')
+		block title
+			title marsano:~#{locals.title ? '/' + locals.title : ''}$
+		block style
+	body.scripting-unavailable
+		//-
+			main title & navigation with search bar
+			for accessibility, set current page attribute as appropriate
+		header
+			.container
+				block header
+					h1.title
+						a( href='.'
+						   aria-current=(locals.title === title && 'page')
+						 ) marsano:~/home$
+					nav(role='navigation' aria-label='Site Navigation')
+						ul
+							+navItem(undefined, 'home')
+							+navItem('about')
+							li(role='menu' aria-haspopup='menu' aria-expanded='false').nav-submenu
+								a(href='#') articles
+								ul
+									+navItem('powershell-remoting')
+									+navItem('dynamic-nameserver')
+									+navItem('euclidean-algorithm')
+						form(role='search')
+							//- label(for='search')
+							input(id='search' type='search' name='search' placeholder='Search')
+							button(class='search' aria-labelledby='search') 🔍︎
+		block banner
+		main.container(role='main' id=locals.title)
+			block content
+		footer(role='contentinfo')
+			.container
+				//- social media, github
+				small Created by Luis Marsano.
+		block script
