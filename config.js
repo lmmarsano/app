@@ -29,6 +29,7 @@ function normalizePort(val) {
 function prune(obj) {
 	if ( typeof obj === 'object'
 	  && obj !== null
+	  && Object.getPrototypeOf(obj) === Object.prototype
 	   ) {
 		const reducer = (accumulator, key) => {
 			const value = prune(obj[key])

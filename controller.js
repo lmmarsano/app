@@ -35,7 +35,7 @@ const debug = require('debug')('app:controller')
 	    , logout = async (ctx, next) => {
 		    debug('clear session %O', ctx.session)
 		    ctx.session = null
-		    ctx.sessionHandler.regenerateId()
+		    ctx.body = ''
 	    }
 	    , create = async (ctx, next) => {
 		    const {body = {}} = ctx.request

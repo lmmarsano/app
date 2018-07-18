@@ -15,14 +15,13 @@ test.before(async () => {
 })
 
 test.beforeEach(async (t) => {
-	debugger
 	const app = await init(mongoose)
 	    , client = request.agent(app.listen())
 	    , userCreation = client
-	                    .post('/api/user')
-	                    .send({ name: 'user'
-	                          , password: 'password'
-	                          })
+	                     .post('/api/user')
+	                     .send({ name: 'user'
+	                           , password: 'password'
+	                           })
 	Object.assign(t.context, {client, userCreation})
 })
 
@@ -38,8 +37,10 @@ test.serial
 , async (t) => {
 	const {client, userCreation} = t.context
 	    , responseCreate = await userCreation
-	t.regex( responseCreate
-	         .header['set-cookie']
+	t.regex( ( responseCreate
+	           .header['set-cookie']
+	        || []
+	         )
 	         .join(`
 `)
 	       , /session/
