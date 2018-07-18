@@ -5,10 +5,9 @@ import MongodbMemoryServer from 'mongodb-memory-server'
 import mongoose from 'mongoose'
 
 import init from '.'
-import {User} from './model'
-// get sessions model & clear after
+// TODO get sessions model & clear after
 
-const mongod = new MongodbMemoryServer()
+const mongod = new MongodbMemoryServer
 test.before(async () => {
 	await mongoose.connect( await mongod.getConnectionString()
 	                      , {useNewUrlParser: true}
@@ -16,14 +15,15 @@ test.before(async () => {
 })
 
 test.beforeEach(async (t) => {
+	debugger
 	const app = await init(mongoose)
-	    , agent = request.agent(app.callback())
-	    , user = await agent
-	                   .post({ name: 'user'
-	                         , password: 'password'
-	                         })
-	                   .send()
-	Object.assign(t.context, {agent, user})
+	    , client = request.agent(app.listen())
+	    , userCreation = client
+	                    .post('/api/user')
+	                    .send({ name: 'user'
+	                          , password: 'password'
+	                          })
+	Object.assign(t.context, {client, userCreation})
 })
 
 test.afterEach.always(() => mongoose.connection.dropDatabase())
@@ -33,12 +33,20 @@ test.after.always(async () => {
 	mongod.stop()
 })
 
-test.serial('get user', async (t) => {
-	const res = await t
-	                  .context
-	                  .agent
-	                  .get('/api/user/user')
-	                  .send()
-	t.is(res.status, 200)
-	t.is(res.body.name, 'user')
+test.serial
+( 'app persists authenticated session'
+, async (t) => {
+	const {client, userCreation} = t.context
+	    , responseCreate = await userCreation
+	t.regex( responseCreate
+	         .header['set-cookie']
+	         .join(`
+`)
+	       , /session/
+	       )
+	t.is(responseCreate.status, 200)
+	const responseRead = await client
+	                           .get('/api/user/user')
+	t.is(responseRead.status, 200)
+	t.deepEqual(responseCreate.body, responseRead.body)
 })

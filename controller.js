@@ -7,7 +7,7 @@ const debug = require('debug')('app:controller')
 	    	          , 422
 	    	          , 'Wrong login credentials.'
 	    	          , {name}
-		          )
+		              )
 	    	debug('authenticate %O', user)
 	    	return user
 	    }
@@ -18,6 +18,10 @@ const debug = require('debug')('app:controller')
 		                 )
 		    await next()
 	    }
+	    , initUserSession = (user, ctx) => {
+		    ctx.session.userId = user._id
+		    debug('update session %O', ctx.session)
+	    }
 	    , login = async (ctx, next) => {
 		    const {name, password} = ctx.request.body || {}
 		    ctx.assert( name && password
@@ -25,13 +29,13 @@ const debug = require('debug')('app:controller')
 		              , 'Name and password are required.'
 		              )
 		    const user = await authenticate(ctx, name, password)
-		    ctx.session.userId = user._id
-		    debug('update session %O', ctx.session)
+		    initUserSession(user, ctx)
 		    ctx.response.body = user
 	    }
 	    , logout = async (ctx, next) => {
 		    debug('clear session %O', ctx.session)
 		    ctx.session = null
+		    ctx.sessionHandler.regenerateId()
 	    }
 	    , create = async (ctx, next) => {
 		    const {body = {}} = ctx.request
@@ -44,8 +48,7 @@ const debug = require('debug')('app:controller')
 			    const user = await (new User(body))
 			                       .save()
 			    debug('create user %O', user)
-			    ctx.session.userId = user._id
-			    debug('update session %O', ctx.session)
+			    initUserSession(user, ctx)
 			    ctx.response.body = user
 		    } catch (err) {
 			    ctx.throw( 400
