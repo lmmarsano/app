@@ -1,10 +1,20 @@
 'use strict'
 const debug = require('debug')('app:controller')
-    , controller = ({User}) => {
-	    const authenticate = async (ctx, name, password) => {
+    , pathToRegexp = require('path-to-regexp')
+    , {relativeUrl} = require('./utility')
+    , toTransform = (url) => {
+	    const resolve = pathToRegexp.compile(url)
+	    return (ctx, params) => relativeUrl( ctx.request.url
+	                                      , resolve(params)
+	                                      )
+    }
+    , controller = ({User}, path) => {
+	    // parameters: models & relative paths between resources
+	    const createRead = toTransform(path.create.read)
+	        , authenticate = async (ctx, name, password) => {
 	    	const user = await User.authenticate(name, password)
 	    	ctx.assert( user
-	    	          , 422
+	    	          , 422         // Unprocessable Entity
 	    	          , 'Wrong login credentials.'
 	    	          , {name}
 		              )
@@ -25,33 +35,40 @@ const debug = require('debug')('app:controller')
 	    , login = async (ctx, next) => {
 		    const {name, password} = ctx.request.body || {}
 		    ctx.assert( name && password
-		              , 422
+		              , 422         // Unprocessable Entity
 		              , 'Name and password are required.'
 		              )
 		    const user = await authenticate(ctx, name, password)
 		    initUserSession(user, ctx)
-		    ctx.response.body = user
+		    ctx.response.status = 204 // No Content
+		    ctx.response.body = null
 	    }
 	    , logout = async (ctx, next) => {
 		    debug('clear session %O', ctx.session)
-		    ctx.session = null
-		    ctx.body = ''
+		    ctx.response.status = 204 // No Content
+		    ctx.response.body = ctx.session = null
 	    }
 	    , create = async (ctx, next) => {
 		    const {body = {}} = ctx.request
 		        , {name, password} = body
 		    ctx.assert( name && password
-		              , 422
+		              , 422         // Unprocessable Entity
 		              , 'Name and password are required.'
 		              )
 		    try {
 			    const user = await (new User(body))
 			                       .save()
+			        , Location = createRead(ctx, {name})
 			    debug('create user %O', user)
 			    initUserSession(user, ctx)
+			    ctx.response.status = 201 // Created
+			    ctx.response.set({ Location
+			                     , 'Content-Location': Location
+			                     })
+			    // TODO ETag
 			    ctx.response.body = user
 		    } catch (err) {
-			    ctx.throw( 400
+			    ctx.throw( 400        // Bad Request
 			             , 'Name unavailable.'
 			             , {name}
 			             )
@@ -60,7 +77,7 @@ const debug = require('debug')('app:controller')
 	    , requiresLogin = async (ctx, next) => {
 		    const {session} = ctx
 		    ctx.assert( session.userId
-		              , 403
+		              , 403         // Forbidden
 		              , 'Request requires user authentication.'
 		              , {session}
 		              )
@@ -72,7 +89,7 @@ const debug = require('debug')('app:controller')
 		    debug('lookup user ID %s', userId)
 		    const user = await User.findById(userId)
 		    ctx.assert( ctx.params.name === user.name
-		              , 403
+		              , 403         // Forbidden
 		              , 'Request requires an authorized user.'
 		              , {userId, user}
 		              )
@@ -83,7 +100,7 @@ const debug = require('debug')('app:controller')
 		    const {name} = ctx.params
 		        , {password, newPassword} = ctx.request.body || {}
 		    ctx.assert( name && password && newPassword
-		              , 422
+		              , 422         // Unprocessable Entity
 		              , 'Name, password, and newPassword are required.'
 		              , {name, password, newPassword}
 		              )
@@ -94,7 +111,7 @@ const debug = require('debug')('app:controller')
 			    ctx.response.body = user
 			    debug('update user %O', user)
 		    } catch (err) {
-			    ctx.throw( 400
+			    ctx.throw( 400        // Bad Request
 			             , 'Password update failed.'
 			             , {name}
 			             )

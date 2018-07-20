@@ -55,7 +55,7 @@ UserSchema.pre
 }
 )
 // Declare Model to mongoose with Schema
-const User = mongoose.model('User', UserSchema)
+const model = (connection = mongoose) => ({User: connection.model('User', UserSchema)})
 
 // Export Model to be used in Node
-module.exports = {User}
+module.exports = model

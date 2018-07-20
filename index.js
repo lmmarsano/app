@@ -6,39 +6,39 @@ const URL = require('url')
     , logger = require('koa-logger')
     , cors = require('@koa/cors')
     , body = require('koa-body')()
-    , session = require('koa-session')
     , etag = require('koa-etag')
     , conditional = require('koa-conditional-get')
+    , session = require('koa-session')
     , Router = require('koa-router')
     , MongooseStore = require('koa-session-mongoose')
     , {renderer} = require('./middleware')
     , serve = require('koa-static')
     , apiRouter = require('./route/api')
-    , router = new Router
-    , app = new Koa
-    , isDev = app.env === 'development'
-    , errorHandler = async (ctx, next) => {
-	      try {
-		      await next()
-	      } catch (err) {
-		      err.status = ctx.status
-		                 = err.statusCode
-		                || err.status
-		                || 500
-		      // provide templates error only in development
-		      if (isDev) {
-		  	    ctx.state.error = err
-		      }
-		      // send error response
-		      debug('error %O', err)
-		      ctx.body = {...err, message: err.message}
-	      }
-      }
     , notFound = async (ctx) => ctx.throw(404)
-    , init = async (mongoose) => {
+    , init = async (connection) => {
+	    const app = new Koa
+	        , router = new Router
+	        , isDev = app.env === 'development'
+	        , errorHandler = async (ctx, next) => {
+		        try {
+			        await next()
+		        } catch (err) {
+			        err.status = ctx.status
+				                 = err.statusCode
+				                || err.status
+				                || 500
+			        // provide templates error only in development
+			        if (isDev) {
+				        ctx.state.error = err
+			        }
+			        // send error response
+			        debug('error %O', err)
+			        ctx.body = {...err, message: err.message}
+		        }
+	        }
 	    // assemble router
 	    router
-	    .use('/api', apiRouter().routes())
+	    .use('/api', apiRouter(connection).routes())
 
 	    // cookie keys
 	    app.keys = cookieSecret
@@ -54,7 +54,7 @@ const URL = require('url')
 	    .use(etag())
 	    .use(conditional())
 	    .use(session( { key: 'session'
-	                  , store: new MongooseStore({connection: mongoose})
+	                  , store: new MongooseStore({connection})
 	                  }
 	                , app
 	                )

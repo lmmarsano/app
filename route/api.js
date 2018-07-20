@@ -1,11 +1,14 @@
 'use strict'
 const Router = require('koa-router')
     , model = require('../model')
-    , { user: {login, logout, create, delete: delUser, update, read}
-      , requiresLogin
-      } = require('../controller')(model)
-    , apiRouter = (options) => {
-	    const userNameRouter = new Router()
+    , controller = require('../controller')
+    , apiRouter = (connection, {options: {router: options} = {}} = {}) => {
+	    const { user: {login, logout, create, delete: delUser, update, read}
+	          , requiresLogin
+	          } = controller( model(connection)
+	                        , {create: {read: ':name'}}
+	                        )
+	        , userNameRouter = new Router()
 	        , userRouter = new Router()
 	        , sessionRouter = new Router()
 	        , router = new Router(options)
