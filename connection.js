@@ -2,14 +2,16 @@
 const {title, db: {host, port, name, auth}} = require('./config')
     , mongoose = require('mongoose')
     , {connection} = mongoose
+    , uri = `mongodb://${host}:${port}/${name}`
 
-connection.on('error', (err) => console.error('connection error:', err))
-connection.once('open', () => console.error('db connection successful'))
+mongoose.connect
+( uri
+, { appname: title
+  , auth
+  , useNewUrlParser: true
+  }
+)
+connection.on('error', (err) => console.error('%s connection error:', uri, err))
+connection.once('open', () => console.error('successful db connection', uri))
 
-module.exports = mongoose
-                 .connect( `mongodb://${host}:${port}/${name}`
-                         , { appname: title
-                           , auth
-                           , useNewUrlParser: true
-                           }
-                         )
+module.exports = connection
