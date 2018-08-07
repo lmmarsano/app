@@ -13,6 +13,7 @@ const path = require('path')
       , kdMemory // = os.freemem() / (1 << 10) | 0
       , kdFreeProp
       , kdCores = os.cpus().length
+      , hash = 'md5'
       } = process.env
 /**
  * Normalize a port into a number, string, or false.
@@ -42,4 +43,5 @@ module.exports = prune
            , memoryCost: kdMemory
            , parallelism: kdCores
            }
- })
+ , hash
+ }) || {}
