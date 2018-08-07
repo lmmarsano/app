@@ -1,5 +1,5 @@
 'use strict'
-import s2p from 'stream-to-promise'
+import getStream from 'get-stream'
 import {setup, test, mongoose} from '../db-test-helper'
 import before from './index.test.before'
 import model from '.'
@@ -54,11 +54,11 @@ test
 ( 'prototype.getDownloadStream provides file'
 , async (t) => {
 	const {dataKey, Model: {Data}} = t.context
-	t.is( (await s2p((await Data
-	                        .findByKey(dataKey, {_id: 1})
-	                 ).getDownloadStream()
-	                )
-	      ).toString()
+	t.is( (await getStream((await Data
+	                              .findByKey(dataKey, {_id: 1})
+	                       ).getDownloadStream()
+	                      )
+	      )
 	    , 'data0'
 	    )
 }

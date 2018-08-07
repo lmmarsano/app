@@ -1,6 +1,6 @@
 'use strict'
 const intoStream = require('into-stream')
-    , s2p = require('stream-to-promise')
+    , getStream = require('get-stream')
     , fetcherFactory = (string) => () => intoStream(string)
     , init = async ({User, Container, Resource, Data}) => {
 	    const s2d = (string) => Data.createFromSource(intoStream(string))
@@ -36,8 +36,7 @@ const intoStream = require('into-stream')
 	       (await Promise
 	              .all(dataItems
 	                   .map(async (data) => ({ container: containerId
-	                                      , name: (await s2p(data.getDownloadStream()))
-	                                              .toString()
+	                                      , name: (await getStream(data.getDownloadStream()))
 	                                      , data: data.md5
 	                                      , type: 'text/plain'
 	                                      })
