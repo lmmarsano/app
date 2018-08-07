@@ -3,9 +3,10 @@ const URL = require('url')
     , debug = require('debug')('app') // set debug message heading to app
     , {cookieSecret, servePath} = require('./config')
     , Koa = require('koa')
+    , bodyFetcher = require('./koa-body-fetcher')
     , logger = require('koa-logger')
     , cors = require('@koa/cors')
-    , body = require('koa-body')()
+    , body = require('koa-bodyparser')()
     , etag = require('koa-etag')
     , conditional = require('koa-conditional-get')
     , session = require('koa-session')
@@ -16,7 +17,8 @@ const URL = require('url')
     , apiRouter = require('./route/api')
     , notFound = async (ctx) => ctx.throw(404)
     , init = async (connection) => {
-	    const app = new Koa
+	    const {app, bodyFetch} = bodyFetcher(new Koa)
+	        , always = () => true
 	        , router = new Router
 	        , isDev = app.env === 'development'
 	        , errorHandler = async (ctx, next) => {
@@ -38,7 +40,7 @@ const URL = require('url')
 	        }
 	    // assemble router
 	    router
-	    .use('/api', apiRouter(connection).routes())
+	    .use('/api', (await apiRouter(connection)).routes())
 
 	    // cookie keys
 	    app.keys = cookieSecret
