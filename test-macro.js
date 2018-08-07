@@ -10,7 +10,7 @@ const util = require('util')
 %s(%s) = %O`
 	                  , title
 	                  , f.name
-	                  , argsString.substr(1, argsString.length - 2)
+	                  , argsString.substring(1, argsString.length - 1)
 	                  , expected
 	                  ).trim()
 }
