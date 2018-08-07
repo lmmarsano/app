@@ -1,5 +1,6 @@
 'use strict'
 const {posix} = require('path')
+    , smagic = require('stream-mmmagic')
     , prune = (obj) => {
 	    // drop unused keys (values undefined or {})
 	    if ( typeof obj === 'object'
@@ -23,9 +24,27 @@ const {posix} = require('path')
 		    return obj
 	    }
     }
+    , tap = (reader, value) => {
+	    reader(value)
+	    return value
+    }
     , relativeUrl = (from, to) => from.endsWith('/')
                                ? to
                                : posix.join( posix.basename(from)
                                            , to
                                            )
-module.exports = {prune, relativeUrl}
+    , normalizeUrl = (url) => decodeURI((new URL(url, 'http://host/')).pathname)
+                             .replace(/\/{2,}/g, '/')
+                             .replace(/(.)\/$/, '$1')
+                             .normalize()
+    , sleep = async (time) => new Promise((resolve) => setTimeout(resolve, time))
+    , magic = (...args) =>
+	new Promise((resolve, reject) =>
+	            smagic( ...args
+	                  , (err, mime, output) => err
+	                                        ? reject(err)
+	                                        : resolve({mime, output})
+	                  )
+	           )
+
+module.exports = {prune, tap, relativeUrl, normalizeUrl, sleep, magic}
