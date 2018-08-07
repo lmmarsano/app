@@ -110,7 +110,7 @@ test
 , async (t) => {
 	const {reResourceId: _id, Model: {Resource, Data}, fetcherFactory} = t.context
 	    , resource = await Resource
-	                       .findById(_id, {data: 1})
+	                       .findById(_id)
 	                       .populate({ path: 'vdata'
 	                                 , select: { md5: 1
 	                                           , refCount: 1
@@ -149,7 +149,7 @@ test
 	      , {refCount: nextRefCount}
 	      ] = await Promise.all
 	([ Resource
-	   .findById(_id, {data: 1})
+	   .findById(_id)
 	   .populate({ path: 'vdata'
 	             , select: { md5: 1
 	                       , refCount: 1
@@ -186,7 +186,7 @@ test
 	      , {refCount: nextRefCount}
 	      ] = await Promise.all
 	([ Resource
-	   .findById(_id, {data: 1})
+	   .findById(_id)
 	   .populate({ path: 'vdata'
 	             , select: { md5: 1
 	                       , refCount: 1
@@ -215,7 +215,7 @@ test
 , async (t) => {
 	const {resourceId: _id, Model: {Resource, Data}} = t.context
 	    , resource = await Resource
-	                       .findById(_id, {data: 1})
+	                       .findById(_id)
 	                       .populate({ path: 'vdata'
 	                                 , select: { md5: 1
 	                                           , refCount: 1
@@ -241,8 +241,7 @@ test
 ( 'Resource.prototype.deepUpdate updates names'
 , async (t) => {
 	const {resourceId: _id, Model: {Resource, Data}} = t.context
-	    , resource = await Resource
-	                       .findById(_id, {name: 1})
+	    , resource = await Resource.findById(_id)
 	    , {name} = resource
 	await resource.deepUpdate({_id, name: 'newName'})
 	t.not(name, 'newname')
@@ -259,8 +258,7 @@ test
 ( 'Resource.prototype.deepUpdate updates containers'
 , async (t) => {
 	const {resourceId: _id, reContainerId: container, Model: {Resource, Data}} = t.context
-	    , resource = await Resource
-	                       .findById(_id, {container: 1})
+	    , resource = await Resource.findById(_id)
 	    , {containerId} = resource
 	await resource.deepUpdate({_id, container})
 	t.falsy(container.equals(containerId))
@@ -276,11 +274,10 @@ test
 test
 ( 'Resource.prototype.deepUpdate fails for resource conflict'
 , async (t) => {
-	t.plan(1)
 	const {resourceId: _id, reResourceId: occupiedId, Model: {Resource, Data}} = t.context
-	    , resource = await Resource
-	                       .findById(occupiedId, {name: 1, container: 1})
-	    , {name, container} = resource
+	    , [resource, occupied] = await Promise.all
+	([ _id, occupiedId].map((id) => Resource.findById(id)))
+	    , {name, container} = occupied
 	try {
 		await resource.deepUpdate({_id, name, container})
 	} catch (e) {
