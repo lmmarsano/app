@@ -5,13 +5,13 @@
  */
 
 const init = require('..')
-    , mongoose = require('../connection')
+    , connection = require('../connection')
     , config = require('../config')
     , http = require('http')
     , {port} = config
     , debug = require('debug')('app:server')
     , serve = async () => {
-	    const app = await init(await mongoose)
+	    const app = await init(await connection)
 	        , server = http.createServer(app.callback())
 
 	    /**
