@@ -38,44 +38,5 @@ const path = require('path')
                })
       )
  ])
-    , continuer = (app) => {
-	    /* intercept expect 100-continue & conditionally retrieve body
-	       https://httpwg.org/specs/rfc7231.html#header.expect
-	     */
-	    const pass = (_, next) => next()
-	        , continueWare = (predicate, {withBody = pass, withoutBody = pass} = {}) => async (ctx, next) => {
-		    // retrieve body when predicate returns true
-		    const {writeContinue} = ctx.response
-		    if (!writeContinue || predicate(ctx)) {
-			    writeContinue && writeContinue()
-			    await withBody(ctx, next)
-		    } else {
-			    await withoutBody(ctx, next)
-		    }
-	    }
-	        , {listener, createContext} = Object.getPrototypeOf(app)
-	    let checkContinue = false
-	    // track checkContinue & set context
-	    // state preserves across synchronous events in a single thread
-	    app.listener = (...args) => {
-		    const server = listener.call(app, ...args)
-		    server.on( 'checkContinue'
-		             , (...args) => {
-			             checkContinue = true
-			             server.emit('request', ...args)
-		             }
-		             )
-		    return server
-	    }
-	    // private method may change without warning
-	    app.createContext = (req, res) => {
-		    const ctx = createContext.call(app, ...arguments)
-		    if (checkContinue) {
-			    ctx.response.writeContinue = () => res.writeContinue()
-			    checkContinue = false
-		    }
-		    return ctx
-	    }
-	    return continueWare
-    }
-module.exports = {renderer, continuer}
+
+module.exports = {renderer}
