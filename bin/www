@@ -9,7 +9,7 @@ const init = require('..')
     , config = require('../config')
     , http = require('http')
     , {port} = config
-    , debug = require('debug')('app:server')
+    , debug = require('debug')('app:www')
     , serve = async () => {
 	    const app = await init(await connection)
 	        , server = http.createServer(app.callback())
