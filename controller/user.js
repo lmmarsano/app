@@ -2,7 +2,7 @@
 const debug = require('debug')('app:controller.user')
     , {validationThrow, isDuplicateError, toRelative} = require('./helper')
     , {UserNotFoundError} = require('../model/user.schema')
-    , controller = ({User}, path) => {
+    , controller = ({User}, {user: path}) => {
 	    // parameters: models & relative paths between resources
 	    const createRead = toRelative(path.create.read)
 	        , authenticate = async (ctx, credential) => {
@@ -52,6 +52,7 @@ const debug = require('debug')('app:controller.user')
 			                         , 'Content-Location': Location
 			                         })
 			        // TODO ETag
+			        user.password = undefined
 			        ctx.response.body = await user.fill()
 		        } catch (e) {
 			        if (isDuplicateError(e)) {

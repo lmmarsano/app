@@ -1,5 +1,10 @@
 'use strict'
 const user = require('./user')
+    , container = require('./container')
+    , resource = require('./resource')
+    , data = require('./data')
     , factory = (Model, path) => Object.assign
-({}, ...[user].map((factory) => factory(Model, path)))
+( {}
+, ...[user, container, resource, data].map((factory) => factory(Model, path))
+)
 module.exports = factory

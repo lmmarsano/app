@@ -11,6 +11,6 @@ const debug = require('debug')('app:controller.data')
 		                                     )
 		        debug('read data %s', key)
 	        }
-	    return {container: {read}}
+	    return {data: {read}}
 }
 module.exports = controller

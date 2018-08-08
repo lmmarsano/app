@@ -1,12 +1,11 @@
 'use strict'
 const debug = require('debug')('app:controller.resource')
-    , {validationThrow, toRelative} = require('./helper')
+    , {validationThrow} = require('./helper')
     , {normalizeUrl} = require('../utility')
     , {FileRequiredError} = require('../model/data.schema')
-    , controller = ({Container, Resource}, {resource: path}) => {
+    , controller = ({Container, Resource}) => {
 	    // parameters: models & relative paths between resources
-	    const createRead = toRelative(path.create.read)
-	        , extractKey = (contentId) => contentId.startsWith('urn:md5:')
+	    const extractKey = (contentId) => contentId.startsWith('urn:md5:')
 	                                   && contentId.substring(8)
 	        , fetcher = (ctx) => () => {
 		        const {writeContinue} = ctx.state
@@ -47,20 +46,6 @@ const debug = require('debug')('app:controller.resource')
 		                       , resource
 		                       }
 		                     )
-		        return next()
-	        }
-	        , isAuthorized = (ctx, next) => {
-		        ctx
-		        .state
-		        .container
-		        .isAuthorized
-		        (ctx.session.userId) || ctx
-		                                .throw( 403    // Forbidden
-		                                      , 'Request requires an authorized user.'
-		                                      , { method: ctx.request.method
-		                                        , container: ctx.container.url
-		                                        }
-		                                      )
 		        return next()
 	        }
 	        , create = async (ctx, next) => {
@@ -151,7 +136,6 @@ const debug = require('debug')('app:controller.resource')
 	                       , update
 	                       , delete: destroy
 	                       , lookup
-	                       , isAuthorized
 	                       }
 	           }
 }

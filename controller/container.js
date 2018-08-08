@@ -23,7 +23,9 @@ const debug = require('debug')('app:controller.container')
 		        (ctx.session.userId) || ctx
 		                                .throw( 403    // Forbidden
 		                                      , 'Request requires an authorized user.'
-		                                      , {body: ctx.request.body}
+		                                      , { method: ctx.request.method
+		                                        , container: ctx.container.url
+		                                        }
 		                                      )
 		        debug('isAuthorized accepts')
 		        return next()
@@ -88,8 +90,8 @@ const debug = require('debug')('app:controller.container')
 	                        , update
 	                        , delete: destroy
 	                        , lookup
-	                        , isAuthorized
 	                        }
+	           , isAuthorized
 	           }
 }
 module.exports = controller
