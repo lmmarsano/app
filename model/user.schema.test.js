@@ -33,6 +33,17 @@ test
 )
 
 test
+( 'User.prototype.fill populates containers.resources'
+, async (t) => {
+	const {userId: _id, Model: {User}} = t.context
+	    , user = await User.findById(_id)
+	    , {containers} = await user.fill()
+	t.truthy(containers)
+	t.truthy(containers[0].resources)
+}
+)
+
+test
 ( 'User.getIds returns working container, resource, data keys'
 , async (t) => {
 	const {userId: _id, Model: {User, Container, Resource, Data}} = t.context

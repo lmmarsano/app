@@ -132,7 +132,7 @@ function fill() {
 	 , populate: { path: 'resources'
 	             , sort: {name: 1}
 	             }
-	 }).exexPopulate()
+	 }).execPopulate()
 }
 // Export Model to be used in Node
 module.exports = Object.assign(factory, {UserNotFoundError})
