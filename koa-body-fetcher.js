@@ -1,5 +1,5 @@
 'use strict'
-const debug = require('debug')('koa:body-fetcher')
+const debug = require('debug')('koa-body-fetcher')
     , bodyFetcher = (app) => {
 	/* intercept expect 100-continue & conditionally retrieve body
 	   https://httpwg.org/specs/rfc7231.html#header.expect
@@ -9,16 +9,16 @@ const debug = require('debug')('koa:body-fetcher')
 		/* track checkContinue & set context
 		   state preserves across synchronous events in a single thread */
 		{
-			const {listener} = Object.getPrototypeOf(app)
-			app.listener = (...args) => {
-				const server = listener.call(app, ...args)
-				server.on( 'checkContinue'
-				         , (...args) => {
-					         checkContinue = true
-					         server.emit('request', ...args)
-					         debug('checkContinue')
-				         }
-				         )
+			const {listen} = Object.getPrototypeOf(app)
+			app.listen = (...args) => {
+				const server = listen.apply(app, args)
+				               .on( 'checkContinue'
+				                  , (...args) => {
+					                  debug('checkContinue')
+					                  checkContinue = true
+					                  server.emit('request', ...args)
+				                  }
+				                  )
 				debug('listen')
 				return server
 			}
@@ -27,7 +27,7 @@ const debug = require('debug')('koa:body-fetcher')
 		{
 			const {createContext} = Object.getPrototypeOf(app)
 			app.createContext = (req, res) => {
-				const ctx = createContext.call(app, ...arguments)
+				const ctx = createContext.call(app, req, res)
 				if (checkContinue) {
 					ctx.state.writeContinue = () => {
 						res.writeContinue()
