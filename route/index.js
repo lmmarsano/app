@@ -3,7 +3,8 @@ const Router = require('koa-router')
     , body = require('koa-bodyparser')()
     , model = require('../model')
     , controller = require('../controller')
-    , router = async (connection, {options: {api: apiOptions} = {}} = {}) => {
+    , decompress = require('../koa-decompress')()
+    , router = async (connection, {api: apiOptions, bodyFetch} = {}) => {
 	    const { user
 	          , container
 	          , data
@@ -22,11 +23,13 @@ const Router = require('koa-router')
 	        , containerRouter = new Router
 	        , dataRouter = new Router
 	        , api = new Router(apiOptions)
-	        , resourceRouter = new Router({prefix: '/:url*'})
+	        , resourceUrlRouter = new Router
+	        , resourceRouter = new Router
 
 	    userNameRouter
-	    .use(requiresLogin)
+	    .use('/', user.getUser)
 	    .get('userRead', '/', user.read)
+	    .use('/', requiresLogin, user.isAuthorized)
 	    .put('userUpdate', '/', user.update)
 	    .delete('userDelete', '/', user.delete)
 	    userRouter
@@ -38,34 +41,34 @@ const Router = require('koa-router')
 	    .delete('sessionEnd', '/', requiresLogin, user.logout)
 
 	    containerUrlRouter
-	    .use(container.lookup)
+	    .use('/', container.lookup)
 	    .get('containerRead', '/', container.read)
-	    .use(requiresLogin)
-	    .use(isAuthorized)
+	    .use('/', requiresLogin, isAuthorized)
 	    .put('containerUpdate', '/', container.update)
 	    .delete('containerDelete', '/', container.delete)
 	    containerRouter
-	    .post('containerCreate', '/', requiresLogin, isAuthorized, container.create)
+	    .post('containerCreate', '/', requiresLogin, container.create)
 	    .use('/:url*', containerUrlRouter.routes())
 
 	    dataRouter
-	    .get('dataRead', '/data/:key', data.read)
+	    .get('dataRead', '/:key', data.read)
 
 	    api
-	    .use(body)
+	    .use(bodyFetch(), body)
 	    .use('/user', userRouter.routes())
 	    .use('/session', sessionRouter.routes())
 	    .use('/container', containerRouter.routes())
 	    .use('/data', dataRouter.routes())
 
-	    resourceRouter
-	    .use(resource.lookup)
+	    resourceUrlRouter
+	    .post('resourceCreate', '/', requiresLogin, decompress, resource.create)
+	    .use('/', resource.lookup)
 	    .get('resourceRead', '/', resource.read)
-	    .use(requiresLogin)
-	    .use(isAuthorized)
-	    .post('resourceCreate', '/', resource.create)
-	    .put('resourceUpdate', '/', resource.update)
+	    .use('/', requiresLogin, isAuthorized)
+	    .put('resourceUpdate', '/', decompress, resource.update)
 	    .delete('resourceDelete', '/', resource.delete)
+	    resourceRouter
+	    .use('/:url*', resourceUrlRouter.routes())
 
 	    return {api, resource: resourceRouter}
     }
