@@ -6,7 +6,7 @@ import init from '.'
 
 setup()
 
-test.beforeEach(async (t) => {
+test.serial.beforeEach(async (t) => {
 	const {context} = t
 	    , app = await init(context.connection)
 	    , client = request.agent(app.listen())
@@ -14,7 +14,7 @@ test.beforeEach(async (t) => {
 	    , userCreate = { uri
 	                   , request: client
 	                              .post(uri)
-	                              .send({ name: 'user'
+	                              .send({ name: 'name'
 	                                    , password: 'password'
 	                                    })
 	                   }
@@ -43,5 +43,38 @@ test
 	                               )
 	t.is(responseRead.status, 200)
 	t.deepEqual(responseCreate.body, responseRead.body)
+}
+)
+
+test
+( 'app updates user name'
+, async (t) => {
+	const {client, userCreate} = t.context
+	    , responseCreate = await userCreate.request
+	t.is(responseCreate.status, 201)
+	// resolve relative location
+	const responseRead = await client
+	                           .put(url.resolve(userCreate.uri
+	                                           , responseCreate.header.location
+	                                           )
+	                               )
+	                           .send({name: 'newName'})
+	t.is(responseRead.status, 204)
+}
+)
+
+test
+( 'app deletes user'
+, async (t) => {
+	const {client, userCreate} = t.context
+	    , responseCreate = await userCreate.request
+	t.is(responseCreate.status, 201)
+	// resolve relative location
+	const responseRead = await client
+	                           .delete(url.resolve(userCreate.uri
+	                                              , responseCreate.header.location
+	                                              )
+	                                  )
+	t.is(responseRead.status, 204)
 }
 )

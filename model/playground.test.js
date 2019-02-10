@@ -41,7 +41,7 @@ ResourceSchema.pre('validate', preValidate)
 
 setup
 (() => {
-	test.beforeEach
+	test.serial.beforeEach
 	((t) => {
 		const {context} = t
 		    , {connection} = context

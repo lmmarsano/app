@@ -7,7 +7,7 @@ import {documentExists, DocumentExistsError, DataExistsError} from './common'
 
 setup
 (() => {
-	test.beforeEach
+	test.serial.beforeEach
 	(async (t) => {
 		const {context} = t
 		    , Model = await model(context.connection)

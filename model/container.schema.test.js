@@ -6,7 +6,7 @@ import {documentExists, DocumentExistsError} from './common'
 
 setup
 (() => {
-	test.beforeEach
+	test.serial.beforeEach
 	(async (t) => {
 		const {context} = t
 		    , Model = await model(context.connection)
@@ -32,6 +32,7 @@ test
 	const {containerId: _id, Model: {Container, Resource, Data}} = t.context
 	    , {resource, data} = await Container.getIds({_id})
 	await Container.removeQuery({_id})
+	debugger
 	for (const value of await Promise.all
 	     ([documentExists(Container, {_id})]
 	      .concat( data.map((md5) => documentExists(Data,{md5}))

@@ -3,18 +3,10 @@ const intoStream = require('into-stream')
     , getStream = require('get-stream')
     , fetcherFactory = (string) => () => intoStream(string)
     , init = async ({User, Container, Resource, Data}) => {
-	    const s2d = (string) => Data.createFromSource(intoStream(string))
-	        , [ dataItems
-	          , reData
-	          , [{_id: userId}]
-	          ] = await Promise.all
-	    ([ Promise.all(['data0', 'data1'].map(s2d))
-	     , s2d('reData')
-	     , User.create
-	       ([{ name: 'name'
-	         , password: 'password'
-	         }])
-	     ])
+	    const [{_id: userId}] = await User.create
+	    ([{ name: 'name'
+	      , password: 'password'
+	      }])
 	        , [ {_id: containerId}
 	          , {_id: conContainerId}
 	          , {_id: reContainerId}
@@ -29,32 +21,28 @@ const intoStream = require('into-stream')
 	       , url: '/reuse'
 	       }
 	     ])
-	        , [ [{_id: resourceId}]
-	          , [{_id: reResourceId}]
-	          ] = await Promise.all
-	    ([ Resource.create
-	       (await Promise
-	              .all(dataItems
-	                   .map(async (data) => ({ container: containerId
-	                                      , name: (await getStream(data.getDownloadStream()))
-	                                      , data: data.md5
-	                                      , type: 'text/plain'
-	                                      })
-	                     )
-	                  )
-	       )
-	     , Resource.create
-	       ([0, 1]
-	       .map((index) => ({ container: reContainerId
-	                     , name: 'reuse' + index
-	                     , data: reData.md5
-	                     , type: 'text/plain'
-	                     })
-	         )
-	       )
-	     ])
-	    reData.refCount++
-	    await reData.save()
-	    return {userId, containerId, conContainerId, reContainerId, resourceId, reResourceId, dataKey: dataItems[0].md5, reDataKey: reData.md5, fetcherFactory}
+	        , resourceDoc = (container) => (name) => Resource.add
+	    ( { container
+	      , name
+	      , data: name
+	      }
+	    , fetcherFactory(name)
+	    )
+	        , [ {data: reDataKey}
+	          , { _id: resourceId
+	            , data: dataKey
+	            }
+	          ] = await Promise
+	                    .all([resourceDoc(reContainerId)('reData')]
+	                         .concat(['data0', 'data1']
+	                                 .map(resourceDoc(containerId))
+	                                )
+	                        )
+	        , {_id: reResourceId} = await Resource.add
+	    ({ container: reContainerId
+	     , name: 'reDataDuplicate'
+	     , data: reDataKey
+	     })
+	    return {userId, containerId, conContainerId, reContainerId, resourceId, reResourceId, dataKey, reDataKey, fetcherFactory}
     }
 module.exports = init
