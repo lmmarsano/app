@@ -23,7 +23,8 @@ const debug = require('debug')('koa-body-fetcher')
 				return server
 			}
 		}
-		// private method may change without warning
+		/* private method may change without warning
+		   called in same thread as request handler */
 		{
 			const {createContext} = Object.getPrototypeOf(app)
 			app.createContext = (req, res) => {
@@ -48,7 +49,7 @@ const debug = require('debug')('koa-body-fetcher')
 		                  ) => {
 			                  const bodyFetch = (ctx, next) => {
 				                  // retrieve body when predicate returns true
-				                  const {writeContinue} = ctx.response
+				                  const {writeContinue} = ctx.state
 				                  if (writeContinue && !predicate(ctx)) {
 					                  return withoutBody(ctx, next)
 				                  } else {
@@ -56,7 +57,14 @@ const debug = require('debug')('koa-body-fetcher')
 					                  return withBody(ctx, next)
 				                  }
 			                  }
-			                  return bodyFetch
+			                      , bodyFetchAlways = (ctx, next) => {
+				                      const {writeContinue} = ctx.state
+				                      writeContinue && writeContinue()
+				                      return next()
+			                      }
+			                  return predicate
+			                       ? bodyFetch
+			                       : bodyFetchAlways
 		                  }
 		return {app, bodyFetch}
 	}

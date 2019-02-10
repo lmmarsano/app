@@ -6,20 +6,20 @@ const URL = require('url')
     , bodyFetcher = require('./koa-body-fetcher')
     , logger = require('koa-logger')
     , cors = require('@koa/cors')
-    , body = require('koa-bodyparser')()
     , etag = require('koa-etag')
     , conditional = require('koa-conditional-get')
     , session = require('koa-session')
     , Router = require('koa-router')
     , MongooseStore = require('koa-session-mongoose')
-    , {renderer} = require('./middleware')
-    , serve = require('koa-static')
-    , apiRouter = require('./route/api')
+    // , {renderer} = require('./middleware')
+    // , serve = require('koa-static')
+    , getRouters = require('./route')
     , notFound = async (ctx) => ctx.throw(404)
     , init = async (connection) => {
 	    const {app, bodyFetch} = bodyFetcher(new Koa)
 	        , always = () => true
 	        , router = new Router
+	        , {api, resource} = await getRouters(connection, {bodyFetch})
 	        , isDev = app.env === 'development'
 	        , errorHandler = async (ctx, next) => {
 		        try {
@@ -38,15 +38,14 @@ const URL = require('url')
 			        ctx.body = {...err, message: err.message}
 		        }
 	        }
+	    debug('app.env %s', app.env)
 	    // assemble router
 	    router
-	    .use('/api', (await apiRouter(connection)).routes())
+	    .use('/api', api.routes())
+	    .use('', resource.routes())
 
 	    // cookie keys
 	    app.keys = cookieSecret
-
-	    // name body-parser
-	    body._name = 'bodyParser'
 
 	    // mount middleware
 	    app
@@ -61,12 +60,12 @@ const URL = require('url')
 	                , app
 	                )
 	        )
-	    .use(body)
-	    .use(renderer(__dirname, isDev))
-	    .use(serve( servePath
-	              , {extensions: 'html css js svg png jpeg'.split(' ')}
-	              )
-	        )
+	    // .use(body)
+	    // .use(renderer(__dirname, isDev))
+	    // .use(serve( servePath
+	    //           , {extensions: 'html css js svg png jpeg'.split(' ')}
+	    //           )
+	    //     )
 	    .use(router.routes())
 	    // 405 Method Not Allowed & 501 Not Implemented
 	    .use(router.allowedMethods())
