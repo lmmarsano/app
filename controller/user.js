@@ -26,15 +26,16 @@ const debug = require('debug')('app:controller.user')
 	        }
 	        , initUserSession = (user, ctx) => {
 		        ctx.session.userId = user._id
-		        debug('update session %O', ctx.session)
+		        debug('initUserSession %O', ctx.session)
 	        }
 	        , login = async (ctx, next) => {
 		        const user = await authenticate(ctx, ctx.request.body)
 		        initUserSession(user, ctx)
+		        debug('login')
 		        ctx.response.body = null
 	        }
 	        , logout = async (ctx, next) => {
-		        debug('clear session %O', ctx.session)
+		        debug('logout session %O', ctx.session)
 		        ctx.response.body = ctx.session = null
 	        }
 	        , create = async (ctx, next) => {
@@ -65,29 +66,59 @@ const debug = require('debug')('app:controller.user')
 			        }
 		        }
 	        }
-	        , requiresLogin = async (ctx, next) => {
+	        , requiresLogin = (ctx, next) => {
 		        const {session} = ctx
 		        ctx.assert( session.userId
 		                  , 403         // Forbidden
 		                  , 'Request requires user authentication.'
 		                  , {session}
 		                  )
-		        debug('authenticated session %O', session)
-		        await next()
+		        debug('requiresLogin session %O', session)
+		        return next()
 	        }
-	        , read = async (ctx, next) => {
+	        , getUser = async (ctx, next) => {
 		        const {userId} = ctx.session
-		        debug('lookup user ID %s', userId)
-		        const user = await User.findById(userId)
+		            , {name} = ctx.params
+		        const user = ctx.state.user
+		                   = await ( userId
+		                           ? User.findById(userId)
+		                           : User.findOne({name})
+		                           )
+		        debug('getUser %s', name)
+		        return next()
+	        }
+	        , isAuthorized = (ctx, next) => {
+		        const {user} = ctx.state
 		        ctx.assert( ctx.params.name === user.name
 		                  , 403         // Forbidden
 		                  , 'Request requires an authorized user.'
-		                  , {userId, user}
+		                  , {user}
 		                  )
-		        ctx.response.body = await user.fill()
+		        debug('isAuthorized')
+		        return next()
+	        }
+	        , read = async (ctx, next) => {
+		        const user = ctx.response.body
+		                   = await ctx.state.user.fill()
+		        debug('read %O', user)
+	        }
+	        , update = async (ctx, next) => {
+		        const {body} = ctx.request
+		            , {user} = ctx.state
+		        try {
+			        debug('update user %O', await user.safeUpdate(body))
+			        ctx.response.body = null
+		        } catch (e) {
+			        validationThrow(ctx, e, {body})
+		        }
+	        }
+	        , destroy = async (ctx, next) => {
+		        await User.removeQuery({_id: ctx.session.userId})
+		        debug('destroy %O', ctx.state.user)
+		        ctx.response.body = ctx.session = null
 	        }
 	        , list = async (ctx, next) => {
-		        debug('lookup users')
+		        debug('list users')
 		        ctx.response.body = await User.find
 		        ( {}
 		        , {}
@@ -96,42 +127,18 @@ const debug = require('debug')('app:controller.user')
 		          }
 		        )
 	        }
-	        , update = async (ctx, next) => {
-		        const {name} = ctx.params
-		            , {body} = ctx.request
-		            , {password, newPassword} = body || {}
-		        ctx.assert( name && password && newPassword
-		                  , 422         // Unprocessable Entity
-		                  , 'Name, password, and newPassword are required.'
-		                  , {name, password, newPassword}
-		                  )
-		        const user = await authenticate(ctx, {name, password})
-		        user.password = newPassword
-		        try {
-			        await user.save()
-			        ctx.response.body = null
-			        debug('update user %O', user)
-		        } catch (e) {
-			        validationThrow(ctx, e, {body})
-		        }
-	        }
-	        , delUser = async (ctx, next) => {
-		        const {name} = ctx.params
-		            , {password} = ctx.request.body || {}
-		        const user = await authenticate(ctx, {name, password})
-		        await User.removeQuery({_id: user._id})
-		        ctx.response.body = null
-	        }
 	        , echo = async (ctx, next) => {
 		        console.log(ctx.request)
-		        ctx.response.body = ctx.request
+		        ctx.response.body = ctx.req
 	        }
 	    return { user: { login
 	                   , logout
+	                   , getUser
+	                   , isAuthorized
 	                   , create
-	                   , delete: delUser // verify user credentials
-	                   , update
 	                   , read
+	                   , update
+	                   , delete: destroy
 	                   , list
 	                   }
 	           , requiresLogin

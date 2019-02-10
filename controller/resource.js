@@ -5,7 +5,8 @@ const debug = require('debug')('app:controller.resource')
     , {FileRequiredError} = require('../model/data.schema')
     , controller = ({Container, Resource}) => {
 	    // parameters: models & relative paths between resources
-	    const extractKey = (contentId) => contentId.startsWith('urn:md5:')
+	    const extractKey = (contentId) => contentId
+	                                   && contentId.startsWith('urn:md5:')
 	                                   && contentId.substring(8)
 	        , fetcher = (ctx) => () => {
 		        const {writeContinue} = ctx.state
@@ -14,16 +15,19 @@ const debug = require('debug')('app:controller.resource')
 	        }
 	        , getContainerName = async (ctx, url) => {
 		        const nUrl = normalizeUrl(url)
-		            , containerName = await Container.findContainerAndName(nUrl)
-		                           || ctx.throw( 422 // Unprocessable Entity
-		                                       , 'No parent container for URL exists.'
-		                                       )
-		            , {container} = containerName
-		        container.isAuthorized
-		        (ctx.session.userId) || ctx.throw( 403 // Forbidden
-		                                         , 'Request requires an authorized user.'
-		                                         , containerName
-		                                         )
+		            , containerName = await Container
+		                                    .findContainerAndName(nUrl)
+		        ctx.assert( containerName
+		                  , 422 // Unprocessable Entity
+		                  , 'No parent container for URL exists.'
+		                  )
+		        ctx.assert( containerName
+		                    .container
+		                    .isAuthorized(ctx.session.userId)
+		                  , 403 // Forbidden
+		                  , 'Request requires an authorized user.'
+		                  , containerName
+		                  )
 		        return containerName
 	        }
 	        , lookup = async (ctx, next) => {
@@ -37,16 +41,14 @@ const debug = require('debug')('app:controller.resource')
 		                     }
 		          }
 		        )
-		                       || ctx.throw( 404    // Not Found
-		                                   , 'Resource not found.'
-		                                   )
-		            , resource = container.resources[0]
-		        Object.assign( ctx.state
-		                     , { container
-		                       , resource
-		                       }
-		                     )
-		        return next()
+		        if (container) {
+			        Object.assign( ctx.state
+			                     , { container
+			                       , resource: container.resources[0]
+			                       }
+			                     )
+			        return next()
+		        }
 	        }
 	        , create = async (ctx, next) => {
 		        const {container, name} = await getContainerName(ctx, ctx.params.url)
@@ -99,12 +101,14 @@ const debug = require('debug')('app:controller.resource')
 		              ] = 'destination content-id content-type'
 		                  .split(' ')
 		                  .map((field) => ctx.request.get(field))
+		            , data = extractKey(contentId)
 		            , changes = Object.assign
 		        ( {}
 		        , destination
 		       && await getContainerName(ctx, destination)
-		        , contentId
-		       && {data: extractKey(contentId)}
+		        , data
+		        ? {data}
+		        : null
 		        , contentType
 		       && {type: contentType}
 		        )

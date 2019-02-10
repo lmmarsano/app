@@ -8,12 +8,11 @@ const debug = require('debug')('app:controller.container')
 	        , lookup = async (ctx, next) => {
 		        const url = normalizeUrl(ctx.params.url)
 		            , container = await Container.findOne({url})
-		                       || ctx.throw( 404    // Not Found
-		                                   , 'Container not found.'
-		                                   )
-		        debug('lookup %O', container)
-		        Object.assign(ctx.state, {container})
-		        return next()
+		        if (container) {
+			        debug('lookup %O', container)
+			        Object.assign(ctx.state, {container})
+			        return next()
+		        }
 	        }
 	        , isAuthorized = async (ctx, next) => {
 		        ctx
@@ -38,6 +37,7 @@ const debug = require('debug')('app:controller.container')
 		        try {
 			        const container = await (new Container(body))
 			                                .save()
+			            , url = container.url.substring(1).split('/')
 			            , Location = createRead(ctx, {url})
 			        debug('create %O', container)
 			        ctx.response.status = 201 // Created
@@ -46,6 +46,7 @@ const debug = require('debug')('app:controller.container')
 			                         })
 			        ctx.response.body = await container.fill()
 		        } catch (e) {
+			        debug('create error %O', e)
 			        if (isDuplicateError(e)) {
 				        ctx.throw( 400        // Bad Request
 				                 , 'Container unavailable.'
@@ -64,12 +65,6 @@ const debug = require('debug')('app:controller.container')
 	        , update = async (ctx, next) => {
 		        const {container} = ctx.state
 		            , {body} = ctx.request
-		            , {_id} = body
-		        container.hasId
-		        (_id) || ctx.throw( 422    // Unprocessable Entity
-		                          , '_id does not match container.'
-		                          , {_id, url: container.url}
-		                          )
 		        delete body._id
 		        try {
 			        await Object.assign(container, body).save()
