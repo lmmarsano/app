@@ -25,19 +25,22 @@ const posix = require('path')
 	    }
 	    // Declare Schema
 	        , ContainerSchema = new Schema
-	    ({ url: { ...StringLowercaseTrim
-	            , match: urlRxp
-	            , required: true
-	            , index: true
-	            , unique: true
-	            , validate: {validator: urlFree}
-	            }
-	     , assignedTo: { type: Schema.Types.ObjectId
-	                   , ref: 'User'
-	                   , required: true
-	                   , index: true
-	                   }
-	     })
+	    ( { url: { ...StringLowercaseTrim
+	             , match: urlRxp
+	             , required: true
+	             , index: true
+	             , unique: true
+	             , validate: {validator: urlFree}
+	             , set: normalizeUrl
+	             }
+	      , assignedTo: { type: Schema.Types.ObjectId
+	                    , ref: 'User'
+	                    , required: true
+	                    , index: true
+	                    }
+	      }
+		  , {toJSON: {virtuals: true}}
+	    )
 	    Object.assign(ContainerSchema.statics, {getIds, removeByIds, removeQuery, findContainerAndName, findResource})
 	    Object.assign(ContainerSchema.methods, {isAuthorized, fill, hasId})
 	    ContainerSchema.virtual
@@ -47,21 +50,14 @@ const posix = require('path')
 	      , foreignField: 'container'
 	      }
 	    )
-	    ContainerSchema.pre('validate', preValidate)
 	    ContainerSchema.post('save', operationFeedback(debug, 'save'))
 	    ContainerSchema.pre('remove', preRemove)
 	    ContainerSchema.post('remove', operationFeedback(debug, 'remove'))
 	    ContainerSchema.post('findOneAndDelete', postFindOneAndDelete)
 	    ContainerSchema.post('findOneAndDelete', operationFeedback(debug, 'findOneAndDelete'))
 	    return { default: ContainerSchema
-	           , preValidate
 	           }
     }
-async function preValidate() {
-	// fix urls before validating & saving
-	this.url = normalizeUrl(this.url)
-	debug('normal url %s', this.url)
-}
 async function getIds(query) {
 	// get ids to resources & their data
 	const output = await this.aggregate
@@ -73,7 +69,10 @@ async function getIds(query) {
 	             , as: '_id'
 	             }
 	   }
-	 , {$unwind: '$_id'}
+	 , {$unwind: { path: '$_id'
+	             , preserveNullAndEmptyArrays: true
+	             }
+	   }
 	 , {$group: { _id: null
 	            , data: {$push: '$_id.data'}
 	            , resource: {$addToSet: '$_id._id'}
@@ -102,7 +101,7 @@ async function findContainerAndName(url) {
 		       }
 	} else {
 		const {dir, base: name} = posix.parse(url)
-		    , container = await Container.findOne({url})
+		    , container = await Container.findOne({url: dir})
 		return container
 		    && {container, name}
 	}
@@ -171,7 +170,7 @@ function fill() {
 	return this.populate
 	({ path: 'resources'
 	 , sort: {name: 1}
-	 }).exexPopulate()
+	 }).execPopulate()
 }
 function hasId(_id) {
 	return this.id === _id

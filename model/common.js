@@ -21,6 +21,16 @@ const {Schema} = require('mongoose')
     , leftEqual = (a, b) => a instanceof Object
                          ? a.equals(b)
                          : a === b
+    , getModifiedKeys = (keys, document, raw) => {
+	    const diff = document.constructor.hydrate(raw)
+	        , hasUpdated = (key) => {
+		        const value = diff[key]
+		        return !( value === undefined
+		               || leftEqual(value, document[key])
+		                )
+	        }
+	    return new Set(keys.filter(hasUpdated))
+    }
     , operationFeedback = (debug, operation) => function postSave() {
 	    debug(`${operation} %O`, this._id)
     }
@@ -54,15 +64,20 @@ function preValidate() {
 	this.name = decodeURI(this.name).normalize()
 	debug('decoded name %s', this.name)
 }
+function normalize(name) {
+	name = decodeURI(name).normalize()
+	debug('decoded name %s', name)
+	return name
+}
 module.exports = { StringLowercaseTrim
                  , Segment
                  , urlRxp
-                 , name: {preValidate}
+                 , name: {preValidate, normalize}
                  , isMediaType
                  , removeByIds
                  , documentExists
                  , absentOrThrow
-                 , leftEqual
+                 , getModifiedKeys
                  , operationFeedback
                  , DocumentExistsError
                  , DataExistsError

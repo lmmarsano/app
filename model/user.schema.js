@@ -5,26 +5,60 @@ const {Schema} = require('mongoose')
     , debug = require('debug')('app:user.schema')
     , {argon2: argon2options = {}} = require('../config')
     , { Segment
-      , name: {preValidate}
+      , name: {normalize}
+      , getModifiedKeys
       , operationFeedback
       } = require('./common')
     , factory = (connection) => {
 	    // Declare Schema
-	    const UserSchema = new Schema
-	    ({ name: { ...Segment
-	             , required: true
-	             , index: true
-	             , unique: true
-	             }
-	     , password: { type: String
-	                 , required: true
-	                 , select: false
-	                 }
-	     })
-	    // update username: bypass save middleware
+	    const UserSchemaProto = { name: { ...Segment
+	                                    , required: true
+	                                    , index: true
+	                                    , unique: true
+	                                    , set: normalize
+	                                    }
+	                            , password: { type: String
+	                                        , required: true
+	                                        , select: false
+	                                        }
+	                            }
+	        , UserSchema = new Schema( UserSchemaProto
+	                                 , {toJSON: {virtuals: true}}
+	                                 )
+	        , UserKeys = Object.keys(UserSchemaProto)
+
+	    async function safeUpdate(diff) {
+		    // check for changes
+		    const User = this.constructor
+		        , modifiedKeys = getModifiedKeys(UserKeys, this, diff)
+		    if (modifiedKeys.size) {
+			    debug('safeUpdate modified keys %O', modifiedKeys)
+			    for (const key of modifiedKeys) {
+				    this[key] = diff[key]
+			    }
+			    if (modifiedKeys.has('password')) {
+				    await this.save()
+			    } else {
+				    // unchanged password: bypass save middleware
+				    // validate
+				    await this.validate()
+				    for (const key of modifiedKeys) {
+					    diff[key] = this[key]
+				    }
+				    await User.update
+				    ( {_id: this._id}
+				    , {$set: diff}
+				    )
+			    }
+			    debug('safeUpdate save resource %O', this)
+		    } else {
+			    debug('safeUpdate unchanged resource %O', this)
+		    }
+		    return this
+	    }
 
 	    Object.assign(UserSchema.statics, {authenticate, getIds, removeQuery})
-	    Object.assign(UserSchema.methods, {fill})
+	    Object.assign(UserSchema.methods, {fill, safeUpdate})
 	    UserSchema.virtual
 	    ( 'containers'
 	    , { ref: 'Container'
@@ -32,7 +66,6 @@ const {Schema} = require('mongoose')
 	      , foreignField: 'assignedTo'
 	      }
 	    )
-	    UserSchema.pre('validate', preValidate)
 	    UserSchema.pre('save', preSave)
 	    UserSchema.post('save', operationFeedback(debug, 'save'))
 	    return { default: UserSchema
@@ -42,7 +75,7 @@ const {Schema} = require('mongoose')
 	           }
     }
     , verifier = 	(password) => async (user) => {
-	    debug('verify %O %s', user, password)
+	    debug('verifier %s %O', password, user)
 	    if (user) {
 		    if (await argon2.verify(user.password, password)) {
 			    return user
@@ -59,7 +92,9 @@ const {Schema} = require('mongoose')
 	    (user.password)
 	    (await model
 	           .findOne( {name: user.name}
-	                   , {password: 1}
+	                   , { name: 1
+	                     , password: 1
+	                     }
 	                   )
 	    )
     }
@@ -94,7 +129,10 @@ async function getIds(query) {
 	             , as: '_id'
 	             }
 	   }
-	 , {$unwind: '$_id'}
+	 , {$unwind: { path: '$_id'
+	             , preserveNullAndEmptyArrays: true
+	             }
+	   }
 	 , {$project: {_id: '$_id._id'}}
 	 , {$lookup: { from: 'resources'
 	             , localField: '_id'
@@ -102,7 +140,10 @@ async function getIds(query) {
 	             , as: 'as'
 	             }
 	   }
-	 , {$unwind: '$as'}
+	 , {$unwind: { path: '$as'
+	             , preserveNullAndEmptyArrays: true
+	             }
+	   }
 	 , {$group: { _id: null
 	            , data: {$push: '$as.data'}
 	            , resource: {$addToSet: '$as._id'}
@@ -111,12 +152,123 @@ async function getIds(query) {
 	   }
 	 , {$project: {_id: 0}}
 	 ])
+	debug('getIds %O', output)
 	return output[0]
+}
+async function read(query) {
+	// get ids to resources & their data
+	const output = await this.aggregate
+	([ {$match: query}
+	 , {$project: {name: 1}}
+	 , {$lookup: { from: 'containers'
+	             , localField: '_id'
+	             , foreignField: 'assignedTo'
+	             , as: 'containers'
+	             }
+	   }
+	 , {$project: {'containers.assignedTo': 0}}
+	 , {$lookup: { from: 'resources'
+	             , localField: 'containers._id'
+	             , foreignField: 'container'
+	             , as: 'resources'
+	             }
+	   }
+	 , { $project:
+			 { resources: 0
+			 , containers:
+				 { $map:
+					 { input: '$containers'
+					 , as: 'container'
+					 , in:
+						 { $mergeObjects:
+							 [ '$$container'
+							 , { resources:
+									 { $filter:
+										 { input: '$resources'
+										 , cond:
+											 { $eq:
+												 [ '$$container._id'
+												 , '$$this.container'
+												 ]
+											 }
+										 }
+									 }
+								 }
+							 ]
+						 }
+					 }
+				 }
+			 }
+		 }
+	 , {$project: {'containers.resources.container': 0}}
+	 , {$lookup: { from: 'data.files'
+	             , localField: 'containers.resources.data'
+	             , foreignField: 'md5'
+	             , as: 'data'
+	             }
+	   }
+	 , { $project:
+			 { data: 0
+			 , containers:
+				 { $map:
+					 { input: '$containers'
+					 , as: 'container'
+					 , in:
+						 { $mergeObjects:
+							 [ '$$container'
+							 , { resources:
+									 { $map:
+										 { input: '$$container.resources'
+										 , as: 'resource'
+										 , in:
+											 { $mergeObjects:
+												 [ '$$resource'
+												 , { $ifNull:
+														 [ '$$resource.type'
+														 , { type:
+																 { $let:
+																	 { vars:
+																		 { data:
+																			 { $elementAt:
+																				 [ { $filter:
+																						 { input: '$data'
+																						 , cond:
+																							 { $eq:
+																								 [ '$$resource.data'
+																								 , '$$this.md5'
+																								 ]
+																							 }
+																						 }
+																					 }
+																				 , 0
+																				 ]
+																			 }
+																		 }
+																	 , in: '$$data.contentType'
+																	 }
+																 }
+															 }
+														 ]
+													 }
+												 ]
+											 }
+										 }
+									 }
+								 }
+							 ]
+						 }
+					 }
+				 }
+			 }
+		 }
+	 ])
+	debug('read %O', output)
+	return output
 }
 async function removeQuery(query) {
 	// remove containers & their associated content
 	const ids = await this.getIds(query)
-	    , {container, resource, data} = ids
+	    , {container, resource, data} = ids || {}
 	await Promise.all
 	([ this.remove(query)
 	 , this.model('Container').removeByIds(container)

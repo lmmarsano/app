@@ -5,19 +5,22 @@ const {posix} = require('path')
     , debug = require('debug')('app:resource.schema')
     , { Segment
       , removeByIds
-      , name: {preValidate}
+      , name: {normalize}
       , isMediaType
       , documentExists
       , absentOrThrow
-      , leftEqual
+      , getModifiedKeys
       , operationFeedback
       } = require('./common')
     , {tap, normalizeUrl} = require('../utility')
     , factory = (connection) => {
 	    // Declare Schema
 	    const ResourceProto = { name: { ...Segment
-	                                  , required: true
+	                                  , required() {
+		                                  return this.name !== ''
+	                                  }
 	                                  , validate: {validator: isAvailable}
+	                                  , set: normalize
 	                                  }
 	                          , type: { type: String
 	                                  , ref: 'MediaType'
@@ -40,13 +43,7 @@ const {posix} = require('path')
 		        , Data = this.model('Data')
 		        , data = this.vdata
 		              || await Data.findByKey(this.data)
-		        , hasUpdated = (key) => {
-			        const value = diff[key]
-			        return !( value === undefined
-			               || leftEqual(value, this[key])
-			                )
-		        }
-		        , modifiedKeys = new Set(ResourceKeys.filter(hasUpdated))
+		        , modifiedKeys = getModifiedKeys(ResourceKeys, this, diff)
 		    if (!this.type && diff.type === data.contentType) {
 			    modifiedKeys.delete('type')
 		    }
@@ -111,13 +108,10 @@ const {posix} = require('path')
 	    , {unique: true}
 	    )
 
-	    ResourceSchema.pre('validate', preValidate)
-	    ResourceSchema.post('save', operationFeedback(debug, 'save'))
+
 	    ResourceSchema.post('remove', postFindOneAndDelete)
 	    ResourceSchema.post('findOneAndDelete', postFindOneAndDelete)
-	    return { default: ResourceSchema
-	           , preValidate
-	           }
+	    return {default: ResourceSchema}
     }
 
 async function isAvailable(name) {
@@ -159,7 +153,7 @@ async function add(raw, dataFetcher) {
 	await absentOrThrow(this, {name, container})
 	const Data = this.model('Data')
 	    , newData = await Data.indirectSaveByKey(resource.data, dataFetcher)
-	debug('add data %O', resource.data = newData.md5)
+	debug('add data %s', resource.data = newData.md5)
 	return resource.save()
 }
 async function postFindOneAndDelete(resource) {

@@ -48,7 +48,7 @@ const {Schema, mongo} = require('mongoose')
 			    debug('createFromSource id %s hash %s', id, data.md5)
 			    return data
 		    } catch (e) {
-			    if ( e.name === 'BulkWriteError'
+			    if ( e instanceof mongo.MongoError
 			      && e.code === 11000 // duplicate key error
 			       ) {
 				    // file already exists: remove new data
