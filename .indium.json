@@ -1,0 +1,6 @@
+{ "configurations":
+	[{ "name": "ava"
+		 , "type": "node"
+		 , "command": "node node_modules/ava/profile.js model/user.schema.test.js"
+	}]
+}
